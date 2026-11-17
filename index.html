@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Стражи Лордерона</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <button id="btn-mute" type="button" class="icon-btn" aria-label="Звук">🔊</button>
+
+  <section id="screen-menu" class="screen">
+    <div class="hero">
+      <img src="assets/icons/banner.jpg" alt="Замок Лордерона на рассвете">
+      <div class="hero-copy">
+        <p class="kicker">Башенная защита</p>
+        <h1>Стражи Лордерона</h1>
+        <p>Десять глав одной истории: от Хилсбрада до Ледяного Трона.</p>
+      </div>
+    </div>
+    <div class="menu-grid">
+      <div class="panel">
+        <h2>Как пойдём</h2>
+        <div id="diffs" class="diffs"></div>
+        <p id="diff-line" class="muted"></p>
+        <button id="btn-continue" type="button" class="big">В поход</button>
+        <div class="row">
+          <button id="btn-help" type="button" class="ghost">Как играть</button>
+          <button id="btn-heroes" type="button" class="ghost">Герои</button>
+          <button id="btn-items" type="button" class="ghost">Предметы</button>
+          <button id="btn-free" type="button" class="ghost">Все главы: вкл</button>
+          <button id="btn-reset" type="button" class="ghost">Сбросить путь</button>
+        </div>
+        <p class="fine">Фанатская история по мотивам. Портреты и умения — классические иконки.</p>
+      </div>
+      <div class="panel">
+        <div class="row spread">
+          <h2>Карта похода</h2>
+          <b id="star-total">0 / 30</b>
+        </div>
+        <div id="nodes" class="nodes"></div>
+      </div>
+    </div>
+    <div class="shelf" aria-hidden="true">
+      <img src="assets/icons/heroes/drow.png" alt="">
+      <img src="assets/icons/heroes/jugg.png" alt="">
+      <img src="assets/icons/heroes/zeus.png" alt="">
+      <img src="assets/icons/heroes/axe.png" alt="">
+      <img src="assets/icons/heroes/pudge.png" alt="">
+    </div>
+  </section>
+
+  <section id="screen-story" class="screen hidden">
+    <div class="panel story">
+      <canvas id="story-portrait" width="180" height="200"></canvas>
+      <div>
+        <p id="story-kicker" class="kicker"></p>
+        <h2 id="story-title"></h2>
+        <p id="story-who" class="who"></p>
+        <p id="story-text"></p>
+        <button id="story-go" type="button" class="big">В бой!</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-play" class="screen hidden">
+    <header class="hud">
+      <div>
+        <b id="hud-chapter"></b>
+        <span id="hud-diff" class="pill"></span>
+      </div>
+      <div class="res"><span class="coin" role="img" aria-label="золото"></span><b id="gold">0</b></div>
+      <div class="res"><span class="heart">♥</span> <b id="lives">0</b></div>
+      <div id="wave-label">Волна 1</div>
+      <div class="row">
+        <button id="btn-speed" type="button" class="small">1×</button>
+        <button id="btn-pause" type="button" class="small">Пауза</button>
+        <button id="btn-back" type="button" class="small ghost">В лагерь</button>
+      </div>
+    </header>
+    <div class="play-main" id="play-main">
+      <aside id="item-card" class="item-card" hidden>
+        <img id="item-card-img" alt="">
+        <h3 id="item-card-name"></h3>
+        <p id="item-card-cost" class="muted"></p>
+        <p id="item-card-slots" class="muted"></p>
+        <ul id="item-card-stats" class="stats"></ul>
+        <p id="item-card-text"></p>
+        <button id="btn-equip" type="button">Надеть</button>
+      </aside>
+      <div class="stage" id="stage">
+        <div id="bossbar" hidden>
+          <span id="bossbar-name"></span>
+          <div class="track"><div id="bossbar-fill"></div></div>
+        </div>
+        <div class="frame" id="frame">
+          <canvas id="cv" width="960" height="600"></canvas>
+          <div id="banner" hidden><strong></strong><span></span></div>
+          <div id="toast" hidden></div>
+          <div id="pause-veil" hidden>Пауза</div>
+        </div>
+      </div>
+      <aside class="side">
+        <p id="preview" class="preview">Скоро</p>
+        <button id="btn-wave" type="button" class="big">В бой!</button>
+        <button id="btn-horn" type="button" class="horn">Рог храбрости <em id="horn-label">Готов</em></button>
+        <div class="detail">
+          <div class="detail-head">
+            <img id="detail-icon" alt="" hidden>
+            <h3 id="detail-title">Выбери героя</h3>
+          </div>
+          <div id="detail-skill" class="skill-line" hidden>
+            <img id="detail-skill-icon" alt="">
+            <b id="detail-skill-name"></b>
+          </div>
+          <p id="detail-text"></p>
+          <p id="detail-stat" class="muted"></p>
+          <div class="row">
+            <button id="btn-up" type="button" hidden>Улучшить</button>
+            <button id="btn-sell" type="button" class="ghost" hidden>Продать</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+    <div id="item-row" class="item-row" hidden>
+      <span class="item-kicker">Вещи</span>
+      <div id="items" class="items"></div>
+    </div>
+    <div id="shop" class="shop"></div>
+  </section>
+
+  <section id="screen-result" class="screen hidden">
+    <div class="panel story">
+      <canvas id="result-portrait" width="180" height="200"></canvas>
+      <div>
+        <p id="result-kicker" class="kicker"></p>
+        <h2 id="result-title"></h2>
+        <p id="result-stars" class="stars"></p>
+        <p id="result-who" class="who"></p>
+        <p id="result-text"></p>
+        <div class="row">
+          <button id="result-next" type="button" class="big">Дальше</button>
+          <button id="result-retry" type="button" class="ghost">Ещё раз</button>
+          <button id="result-menu" type="button" class="ghost">В лагерь</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="modal-heroes" class="modal hidden">
+    <div class="dialog wide">
+      <h2>Герои</h2>
+      <p class="muted">Ближний бой ставь вплотную к повороту. Дальний можно чуть в стороне. Метка — когда герой нужнее всего.</p>
+      <div id="hero-book"></div>
+      <button id="heroes-close" type="button" class="big">Понятно</button>
+    </div>
+  </div>
+
+  <div id="modal-items" class="modal hidden">
+    <div class="dialog wide">
+      <h2>Предметы</h2>
+      <p class="muted">На герое три слота. Метка — когда вещь нужнее всего. Топор и Мьеллнир живут только на метком ударе.</p>
+      <div id="item-book"></div>
+      <button id="items-close" type="button" class="big">Понятно</button>
+    </div>
+  </div>
+
+  <div id="modal-help" class="modal hidden">
+    <div class="dialog">
+      <h2>Как играть</h2>
+      <ol>
+        <li>Выбери героя внизу и поставь его на траву у дороги.</li>
+        <li>Нажми «В бой!». Враги идут по тропе к воротам. Не пусти их. Если босс дойдёт до ворот — глава проиграна.</li>
+        <li>Тракса и Снайпер стреляют далеко, даже в небо. Джаггернаут крутится. Зевс и Лич прыгают по толпе. Акс останавливает. Урса копит ярость на боссе. Визаж пускает гаргулий, Техиз минирует тропу, Тайдхантер смывает Реведжем.</li>
+        <li>Нажми героя на карте, потом вещь внизу. Слева от поля — её параметры и кнопка «Надеть». Сапоги ускоряют удары, боевой топор даёт сплэш, Радианс жжёт рядом. На герое три слота.</li>
+        <li>Кнопка «Все главы» открывает любую главу и всех героев — удобно, чтобы пробовать. Три сложности: Страж, Рыцарь и Герой.</li>
+      </ol>
+      <p class="muted">Клавиши: 1–5 первые герои, пробел — волна, P — пауза, M — звук, Esc — отмена.</p>
+      <button id="help-close" type="button" class="big">Понятно</button>
+    </div>
+  </div>
+
+  <script src="js/campaign.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
