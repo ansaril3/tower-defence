@@ -2,7 +2,7 @@
 var COLS = 16, ROWS = 10, CELL = 60, SEQ = 1;
 var REDUCE = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 var ICONS = {};
-var SAVE = { best: {}, difficulty: "normal", mute: false, free: true };
+var SAVE = { best: {}, difficulty: "normal", mute: false, free: false };
 var G = {
   screen: "menu", time: 0, speed: 1, paused: false,
   enemies: [], towers: [], shots: [], fx: [], texts: [],
@@ -32,7 +32,9 @@ var THEMES = {
   dalaran: { grass: "#3a3f6a", grass2: "#51568a", road: "#b2a6cc", road2: "#6e6588", water: "#6a5ac8", tree: "#2a345c", trunk: "#4a4060" },
   violet: { grass: "#432e72", grass2: "#5a4294", road: "#cbb6ea", road2: "#7d6aa8", water: "#6a58d8", tree: "#2e2458", trunk: "#4a3860" },
   northrend: { grass: "#b7d0dc", grass2: "#e2f2f8", road: "#93a8b8", road2: "#667888", water: "#6ec0de", tree: "#1a4a44", trunk: "#4e4034" },
-  icecrown: { grass: "#8ea8c4", grass2: "#d5e4f4", road: "#7e92a8", road2: "#4e6074", water: "#4aa0c8", tree: "#1a3348", trunk: "#3e342c" }
+  icecrown: { grass: "#8ea8c4", grass2: "#d5e4f4", road: "#7e92a8", road2: "#4e6074", water: "#4aa0c8", tree: "#1a3348", trunk: "#3e342c" },
+  nerub: { grass: "#3a3428", grass2: "#4e4638", road: "#6e5a44", road2: "#3e3428", water: "#2a3848", tree: "#2a241c", trunk: "#1a1612" },
+  naxx: { grass: "#3e4a32", grass2: "#556844", road: "#8a8470", road2: "#5c5848", water: "#3a4a38", tree: "#2a3824", trunk: "#3e3428" }
 };
 function towerColor(id) {
   var d = Campaign.TOWERS[id];
@@ -73,6 +75,10 @@ function maxCleared() {
   var m = 0;
   for (var k in SAVE.best) if (SAVE.best[k]) m = Math.max(m, +k);
   return m;
+}
+function nextChapter() {
+  var last = Campaign.LEVELS.length;
+  return maxCleared() >= last ? last : Math.min(last, maxCleared() + 1);
 }
 function paintMute() {
   var b = document.getElementById("btn-mute");
@@ -139,7 +145,7 @@ function bind() {
   document.addEventListener("pointerdown", function () { AudioBus.ensure(); }, true);
   document.getElementById("btn-mute").addEventListener("click", function () { AudioBus.toggle(); });
   document.getElementById("btn-continue").addEventListener("click", function () {
-    openLevel(Math.min(10, maxCleared() + 1));
+    openLevel(nextChapter());
   });
   document.getElementById("btn-help").addEventListener("click", function () {
     document.getElementById("modal-help").classList.remove("hidden");
@@ -225,7 +231,7 @@ function bind() {
     if (t && G.itemPick) buyItem(t.id, G.itemPick);
   });
   document.getElementById("result-next").addEventListener("click", function () {
-    if (G.ending === "win" && G.level.id < 10) openLevel(G.level.id + 1);
+    if (G.ending === "win" && G.level.id < Campaign.LEVELS.length) openLevel(G.level.id + 1);
     else showMenu();
   });
   document.getElementById("result-retry").addEventListener("click", function () { startLevel(G.level.id); });
@@ -243,7 +249,7 @@ function onKey(e) {
   if (k === "m") { AudioBus.toggle(); return; }
   if (G.screen === "story" && e.key === "Enter") { startLevel(G.pendingId); return; }
   if (G.screen === "result" && e.key === "Enter") {
-    if (G.ending === "win" && G.level.id < 10) openLevel(G.level.id + 1);
+    if (G.ending === "win" && G.level.id < Campaign.LEVELS.length) openLevel(G.level.id + 1);
     else if (G.ending === "win") showMenu();
     else startLevel(G.level.id);
     return;
@@ -274,8 +280,10 @@ function renderMenu() {
   paintLine(document.getElementById("diff-line"), Campaign.DIFF[SAVE.difficulty].line);
   var root = document.getElementById("nodes");
   root.innerHTML = "";
-  var open = SAVE.free ? 10 : maxCleared() + 1;
+  var last = Campaign.LEVELS.length;
+  var open = SAVE.free ? last : maxCleared() + 1;
   var stars = 0;
+  var frontier = nextChapter();
   var freeBtn = document.getElementById("btn-free");
   if (freeBtn) freeBtn.textContent = SAVE.free ? "Все главы: вкл" : "Все главы: выкл";
   Campaign.LEVELS.forEach(function (lv) {
@@ -285,15 +293,14 @@ function renderMenu() {
     var locked = !SAVE.free && lv.id > open;
     var b = document.createElement("button");
     b.type = "button";
-    b.className = "node" + (locked ? " locked" : "") + (!locked && lv.id === Math.min(10, maxCleared() + 1) ? " pulse" : "");
+    b.className = "node" + (lv.boss ? " boss" : "") + (locked ? " locked" : "") + (!locked && lv.id === frontier ? " pulse" : "");
     b.disabled = locked;
     b.innerHTML = "<span>Глава " + lv.id + "</span><b>" + lv.short + "</b><i>" + "★★★☆☆☆".slice(3 - rank, 6 - rank) + "</i>";
     b.addEventListener("click", function () { openLevel(lv.id); });
     root.appendChild(b);
   });
-  document.getElementById("star-total").textContent = stars + " / 30";
-  var next = Math.min(10, open);
-  document.getElementById("btn-continue").textContent = maxCleared() >= 10 ? "Трон снова" : "В поход · глава " + next;
+  document.getElementById("star-total").textContent = stars + " / " + (last * 3);
+  document.getElementById("btn-continue").textContent = maxCleared() >= last ? "Трон снова" : "В поход · глава " + frontier;
 }
 
 function showMenu() {
@@ -302,14 +309,21 @@ function showMenu() {
   showScreen("menu");
   AudioBus.setMode("menu");
 }
+function showTalk(prefix, beat) {
+  document.getElementById(prefix + "-who").textContent = beat.who;
+  document.getElementById(prefix + "-text").textContent = beat.text;
+  var tip = document.getElementById(prefix + "-tip");
+  var line = beat.tip || "";
+  tip.hidden = !line;
+  document.getElementById(prefix + "-tip-text").textContent = line;
+}
 function openLevel(id) {
   var lv = Campaign.LEVELS[id - 1];
   G.pendingId = id;
   G.storyFig = lv.before.fig;
   document.getElementById("story-kicker").textContent = "Глава " + lv.id + " · " + Campaign.DIFF[SAVE.difficulty].name;
   document.getElementById("story-title").textContent = lv.name;
-  document.getElementById("story-who").textContent = lv.before.who;
-  document.getElementById("story-text").textContent = lv.before.text;
+  showTalk("story", lv.before);
   showScreen("story");
   AudioBus.sfx("click");
 }
@@ -465,12 +479,12 @@ function fit() {
   var stage = document.getElementById("stage");
   var bar = document.getElementById("bossbar");
   var reserve = bar && !bar.hidden ? 54 : 0;
-  var maxW = Math.max(160, (stage.clientWidth || 960) - reserve);
-  var maxH = stage.clientHeight || 600;
+  var maxW = Math.max(64, (stage.clientWidth || 960) - reserve);
+  var maxH = Math.max(64, stage.clientHeight || 600);
   var scale = Math.min(maxW / 960, maxH / 600);
   if (!isFinite(scale) || scale <= 0) scale = 1;
-  var h = Math.max(200, Math.floor(600 * scale));
-  cv.style.width = Math.max(320, Math.floor(960 * scale)) + "px";
+  var h = Math.floor(600 * scale);
+  cv.style.width = Math.floor(960 * scale) + "px";
   cv.style.height = h + "px";
   if (bar) bar.style.height = h + "px";
 }
@@ -975,8 +989,11 @@ function renderItems(tower) {
   var row = document.getElementById("item-row");
   var box = document.getElementById("items");
   if (!box || !row) return;
+  var opened = !!tower;
+  var changed = row.hidden === opened;
   box.innerHTML = "";
-  row.hidden = !tower;
+  row.hidden = !opened;
+  if (changed) requestAnimationFrame(fit);
   if (!tower) return;
   Campaign.ITEM_ORDER.forEach(function (id) {
     var it = Campaign.ITEMS[id];
@@ -1113,7 +1130,8 @@ function spawnEnemy(type, dist, opt) {
     ai: def.ai || "", intro: def.intro || "", dist: Math.max(0, dist), x: pos.x, y: pos.y,
     flip: 1, lane: Math.random() * 16 - 8, alive: true, fade: 0, flash: 0, slow: 0, slowT: 0,
     shieldT: 0, chargeT: 0, aiT: def.boss ? 6 : 0, aiN: 0, warned: false, phase: 1,
-    iceArmor: false, enraged: false, split: false, summoned: !!opt.summoned
+    iceArmor: false, enraged: false, split: false, summoned: !!opt.summoned,
+    burrowT: 0, guarded: false, heals: def.heals || ""
   };
   G.enemies.push(e);
   if (def.boss) {
@@ -1160,8 +1178,13 @@ function update(dt) {
     e.flash = Math.max(0, e.flash - dt);
     var sp = e.speed * G.diff.spd;
     if (e.enraged) sp *= 1.25;
-    if (e.chargeT > 0) sp *= 2.45;
-    else if (e.slowT > 0) sp *= (1 - e.slow);
+    if (e.slowT > 0) {
+      var slow = e.slow;
+      if (e.chargeT > 0 && e.ai === "butcher") slow *= 0.45;
+      sp *= (1 - slow);
+    }
+    if (e.chargeT > 0) sp *= e.ai === "butcher" ? 3.1 : 2.45;
+    if (e.burrowT > 0) sp = 0;
     e.dist += sp * dt;
     var pos = sample(G.map, e.dist);
     var ln = Math.hypot(pos.dx, pos.dy) || 1;
@@ -1208,27 +1231,68 @@ function runAi(e, dt) {
     if (e.aiT <= 0) {
       e.aiN++;
       if (e.aiN % 2) {
-        spawnEnemy("ghoul", Math.max(0, e.dist - 18), { summoned: true });
-        spawnEnemy("ghoul", Math.max(0, e.dist - 40), { summoned: true });
-        G.toast = { text: "Мал'Ганис зовёт вурдалаков", life: 1.3 };
+        e.flying = false;
+        e.pierceMul = 0.45;
+        e.magicMul = 1.3;
+        spawnEnemy("ghoul", Math.max(0, e.dist - 16), { summoned: true });
+        spawnEnemy("ghoul", Math.max(0, e.dist - 38), { summoned: true });
+        spawnEnemy("ghoul", Math.max(0, e.dist - 60), { summoned: true });
+        G.toast = { text: "Сел на тропу. Стрелы слабые — вихрь и молния", life: 1.6 };
       } else {
-        e.shieldT = 3.1;
+        e.flying = true;
+        e.pierceMul = 0;
+        e.magicMul = 0;
+        e.shieldT = 2.6;
         AudioBus.sfx("shield");
-        G.toast = { text: "Тёмный щит! Бейте всё равно", life: 1.3 };
+        G.toast = { text: "Взмыл! Вихрь мимо. Щит слабый — бей стрелами", life: 1.6 };
       }
-      e.aiT = 9;
+      e.aiT = 8;
     }
   } else if (e.ai === "butcher") {
     e.aiT -= dt;
-    if (!e.warned && e.aiT < 0.85 && e.aiT > 0) {
+    if (!e.warned && e.aiT < 1.15 && e.aiT > 0) {
       e.warned = true;
-      G.toast = { text: "Мясник разгоняется!", life: 1 };
+      G.toast = { text: "Мясник разгоняется! Тормози, пока не рванул", life: 1.2 };
     }
     if (e.aiT <= 0) {
-      e.chargeT = 1.4;
+      e.chargeT = 1.8;
       e.warned = false;
-      e.aiT = 11;
+      e.aiT = 10;
       AudioBus.sfx("roar");
+    }
+    if (!e.split && e.hp / e.maxHp < 0.55) {
+      e.split = true;
+      for (var w = 0; w < 6; w++) spawnEnemy("wolf", Math.max(0, e.dist - 12 - w * 22), { summoned: true });
+      G.banner = { text: "Стая", sub: "Волки рвутся к воротам. В разгоне Мясник почти не чувствует ударов.", life: 2.4 };
+    }
+  } else if (e.ai === "burrow") {
+    e.burrowT = Math.max(0, e.burrowT - dt);
+    var bugs = G.enemies.some(function (en) { return en.alive && en.type === "scarab"; });
+    if (e.guarded !== bugs) {
+      e.guarded = bugs;
+      if (bugs) G.toast = { text: "Пока жуки живы, панцирь почти не берётся", life: 1.5 };
+    }
+    if (e.burrowT > 0) return;
+    e.aiT -= dt;
+    if (!e.warned && e.aiT < 1.15 && e.aiT > 0) {
+      e.warned = true;
+      G.toast = { text: "Ануб'арак зарывается!", life: 1.1 };
+    }
+    if (e.aiT <= 0) {
+      e.warned = false;
+      e.burrowT = 2.3;
+      var room = G.map.total - 120 - e.dist;
+      var jump = Math.max(0, Math.min(170, room));
+      if (jump < 48) jump = 0;
+      e.dist += jump;
+      var pop = sample(G.map, e.dist);
+      e.x = pop.x;
+      e.y = pop.y;
+      for (var b = 0; b < 5; b++) spawnEnemy("scarab", Math.max(0, e.dist - jump - 8 - b * 16), { summoned: true });
+      e.aiT = 9;
+      AudioBus.sfx("roar");
+      burst(e.x, e.y, "#a08050", 10);
+      G.toast = { text: jump ? "Вылез дальше по тропе. Жуки — сзади" : "Зарылся на месте. Сними жуков", life: 1.6 };
     }
   } else if (e.ai === "kel") {
     e.aiT -= dt;
@@ -1251,9 +1315,10 @@ function runAi(e, dt) {
     if (pct < 0.66 && e.phase < 2) {
       e.phase = 2;
       e.iceArmor = true;
-      spawnEnemy("wyrm", Math.max(0, e.dist - 80), { quiet: true });
-      G.banner = { text: "Лёд на броне", sub: "Стрелы слабее. Молния и взрывы бьют крепче. Змей — в небе.", life: 3.1 };
-      G.toast = { text: "Ледяной змей! Пушка его не достанет.", life: 2.2 };
+      spawnEnemy("wyrm", Math.max(0, e.dist - 90), { quiet: true });
+      spawnEnemy("wail", Math.max(0, e.dist - 36), { quiet: true });
+      G.banner = { text: "Лёд на броне", sub: "Стрелы слабее. Змей в небе. Голос трона лечит короля — банши бей молнией.", life: 3.4 };
+      G.toast = { text: "Ледяной змей! Вихрь и мины его не берут.", life: 2.2 };
     }
     if (pct < 0.33 && e.phase < 3) {
       e.phase = 3;
@@ -1278,6 +1343,18 @@ function runAi(e, dt) {
       spawnEnemy("ghoul", Math.max(0, e.dist - 16), { summoned: true });
       spawnEnemy("skeleton", Math.max(0, e.dist - 36), { summoned: true });
       e.aiT = 10;
+    }
+    var heal = false;
+    for (var h = 0; h < G.enemies.length; h++) {
+      if (G.enemies[h].alive && G.enemies[h].heals === "lich") heal = true;
+    }
+    if (heal && e.hp < e.maxHp) {
+      e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.02 * dt);
+      e.healShow = (e.healShow || 0) - dt;
+      if (e.healShow <= 0) {
+        e.healShow = 0.85;
+        floatText(e.x, e.y - 52, "+", "#8ee0a8");
+      }
     }
   }
 }
@@ -1323,23 +1400,25 @@ function showResult() {
   if (G.screen === "result") return;
   var win = G.ending === "win";
   var lv = G.level;
-  var who, fig, text;
-  if (win) { who = lv.after.who; fig = lv.after.fig; text = lv.after.text; }
+  var beat, fig;
+  if (win) { beat = lv.after; fig = lv.after.fig; }
   else {
-    who = "Стража";
     fig = "guard";
-    text = "Ничего. Застава ещё стоит, если мы вернёмся. Тракса ловит быстрых и небо, Джаггернаут — толпу, Урса копит ярость на боссе. Рог береги для самой большой цели.";
+    beat = {
+      who: "Капитан стражи",
+      text: "Мы отступили на шаг, не сбежали. Дорога ещё наша, если вернуться, пока живые не остались на ней одни.",
+      tip: (lv.before && lv.before.tip) || ""
+    };
   }
   G.resultFig = fig;
   document.getElementById("result-kicker").textContent = win ? "Глава " + lv.id + " удержана" : "Глава " + lv.id;
   document.getElementById("result-title").textContent = win ? lv.name : "Нас оттеснили";
-  document.getElementById("result-who").textContent = who;
-  document.getElementById("result-text").textContent = text;
+  showTalk("result", beat);
   var rank = win ? Campaign.DIFF[G.diff.id].rank : 0;
   document.getElementById("result-stars").textContent = (win ? "★★★☆☆☆".slice(3 - rank, 6 - rank) + "  " + Campaign.DIFF[G.diff.id].name : "☆☆☆");
   var next = document.getElementById("result-next");
   next.hidden = !win;
-  next.textContent = lv.id < 10 ? "Дальше" : "В лагерь";
+  next.textContent = lv.id < Campaign.LEVELS.length ? "Дальше" : "В лагерь";
   showScreen("result");
   AudioBus.setMode("menu");
 }
@@ -1387,7 +1466,7 @@ function pickTarget(t) {
   return best;
 }
 function inRange(t, e, range) {
-  if (!e.alive) return false;
+  if (!e.alive || e.burrowT > 0) return false;
   if (Campaign.TOWERS[t.type].air === "no" && e.flying) return false;
   var ey = e.y - (e.flying ? 26 : 0);
   return Math.hypot(t.x - e.x, t.y - ey) <= range + 6;
@@ -1508,7 +1587,7 @@ function blast(t, x, y, radius, dmg, def, opt) {
   flourish(t, opt.fx || def.attack, x, y, radius);
   for (var i = 0; i < G.enemies.length; i++) {
     var e = G.enemies[i];
-    if (!e.alive) continue;
+    if (!e.alive || e.burrowT > 0) continue;
     if (!opt.air && e.flying) continue;
     var ey = e.y - (e.flying ? 26 : 0);
     if (Math.hypot(e.x - x, ey - y) > radius) continue;
@@ -1579,7 +1658,7 @@ function auraBurn(t, dt) {
   var any = false;
   for (var i = 0; i < G.enemies.length; i++) {
     var e = G.enemies[i];
-    if (!e.alive) continue;
+    if (!e.alive || e.burrowT > 0) continue;
     var ey = e.y - (e.flying ? 26 : 0);
     if (Math.hypot(e.x - t.x, ey - t.y) < 108) {
       deal(e, 11, def, { bare: true });
@@ -1606,7 +1685,7 @@ function chainFrom(first, n) {
 }
 function deal(e, amount, def, opt) {
   opt = opt || {};
-  if (!e || !e.alive || !def) return;
+  if (!e || !e.alive || !def || e.burrowT > 0) return;
   var m = Campaign.MATRIX[def.role][e.armor] || 1;
   if (def.holy && e.undead) m *= 1.35;
   if (def.airBonus && e.flying) m *= def.airBonus;
@@ -1614,7 +1693,9 @@ function deal(e, amount, def, opt) {
   if (e.pierceMul && def.role === "pierce") m *= e.pierceMul;
   if (e.magicMul && def.role === "magic") m *= e.magicMul;
   if (e.iceArmor && def.role === "pierce") m *= 0.6;
-  if (e.shieldT > 0) m *= 0.42;
+  if (e.chargeT > 0 && e.ai === "butcher") m *= 0.4;
+  if (e.guarded) m *= 0.38;
+  else if (e.shieldT > 0) m *= 0.42;
   if (e.breakT > 0) m *= 1.28;
   var dmg = Math.max(1, Math.round(amount * m));
   e.hp -= dmg;
@@ -1649,7 +1730,7 @@ function onHit(t, e, dmg, def) {
   t._extra = 0;
 }
 function rawHit(e, dmg) {
-  if (!e.alive) return;
+  if (!e.alive || e.burrowT > 0) return;
   dmg = Math.max(1, Math.round(dmg));
   e.hp -= dmg;
   e.flash = 0.2;
@@ -2007,6 +2088,8 @@ function drawWeather(ctx, map, t) {
   var snow = map.biome === "snow" || map.biome === "northrend" || map.biome === "icecrown";
   var color = snow ? "rgba(255,255,255,.9)" : map.biome === "elf" ? "rgba(255,214,90,.85)" : map.biome === "plague" ? "rgba(170,140,190,.45)" : "rgba(255,255,255,.35)";
   if (map.biome === "dalaran" || map.biome === "violet") color = "rgba(190,170,255,.75)";
+  if (map.biome === "nerub") color = "rgba(180,150,80,.4)";
+  if (map.biome === "naxx") color = "rgba(150,190,90,.4)";
   for (var i = 0; i < map.flakes.length; i++) {
     var f = map.flakes[i];
     var y = (f.y + t * f.sp * (snow ? 1 : 0.55)) % 620;
@@ -2153,6 +2236,23 @@ function drawRoost(ctx, x, y) {
   ctx.fillRect(x + 8, y - 4, 4, 14);
 }
 function drawEnemy(ctx, e) {
+  if (e.alive && e.burrowT > 0) {
+    ctx.fillStyle = "rgba(74,56,32,.92)";
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y + 8, 18 * e.scale, 7 * e.scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(36,26,16,.9)";
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y + 6, 8 * e.scale, 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    var bw = 28 * Math.min(e.scale, 1.4);
+    var bx = e.x - bw / 2, by = e.y - 30;
+    ctx.fillStyle = "#1b2030";
+    ctx.fillRect(bx, by, bw, 4);
+    ctx.fillStyle = "#c4a06a";
+    ctx.fillRect(bx, by, bw * Math.max(0, e.hp / e.maxHp), 4);
+    return;
+  }
   var hover = e.flying ? 22 + Math.sin(G.time * 3 + e.id) * 4 : 0;
   ctx.fillStyle = "rgba(0,0,0,.28)";
   ctx.beginPath();
@@ -2165,10 +2265,17 @@ function drawEnemy(ctx, e) {
   }
   ctx.restore();
   if (e.warned && e.alive) {
-    ctx.strokeStyle = e.ai === "butcher" ? "rgba(255,150,70,.8)" : "rgba(160,220,255,.75)";
+    ctx.strokeStyle = e.ai === "butcher" ? "rgba(255,150,70,.8)" : e.ai === "burrow" ? "rgba(196,150,80,.85)" : "rgba(160,220,255,.75)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(e.x, e.y, e.ai === "kel" ? 168 : 34 * e.scale, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (e.guarded && e.alive) {
+    ctx.strokeStyle = "rgba(196,160,90,.95)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y - hover - 10, 22 * e.scale, 0, Math.PI * 2);
     ctx.stroke();
   }
   if (e.shieldT > 0) {
@@ -2702,7 +2809,9 @@ function drawChibi(ctx, kind, x, y, sc, opt) {
   else if (kind === "abom" || kind === "butcher") paintBrute(ctx, walk, kind === "butcher");
   else if (kind === "gargoyle") paintGargoyle(ctx, walk);
   else if (kind === "wolf") paintWolf(ctx, walk);
-  else if (kind === "banshee") paintBanshee(ctx, walk);
+  else if (kind === "banshee" || kind === "wail") paintBanshee(ctx, walk);
+  else if (kind === "scarab") paintScarab(ctx, walk);
+  else if (kind === "anub") paintAnub(ctx, walk);
   else if (kind === "naga") paintNaga(ctx, walk);
   else if (kind === "frost") paintFrost(ctx);
   else if (kind === "wyrm") paintWyrm(ctx, walk);
@@ -2941,6 +3050,37 @@ function paintWyrm(ctx, walk) {
   ctx.fillRect(20, -10, 2, 2);
   ctx.fillStyle = "#d7e6f4";
   ctx.beginPath(); ctx.moveTo(16, -14); ctx.lineTo(20, -20); ctx.lineTo(22, -12); ctx.fill();
+}
+function paintScarab(ctx, walk) {
+  oval(ctx, 0, -8, 11, 6, "#c4a15a");
+  oval(ctx, -9, -5, 4, 2.4, "#8a6230");
+  oval(ctx, 9, -5, 4, 2.4, "#8a6230");
+  ctx.strokeStyle = "#1b2030";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-3, -12); ctx.lineTo(-7, -18 - walk * 3);
+  ctx.moveTo(3, -12); ctx.lineTo(7, -18 - walk * 3);
+  ctx.stroke();
+  ctx.fillStyle = "#1b2030";
+  ctx.fillRect(-3, -10, 2, 2); ctx.fillRect(2, -10, 2, 2);
+}
+function paintAnub(ctx, walk) {
+  var leg = walk * 3;
+  oval(ctx, 0, -8, 16, 9, "#6a5030");
+  oval(ctx, 0, -18, 14, 7, "#c4a06a");
+  ctx.fillStyle = "#3e2e1c";
+  ctx.fillRect(-14, -6, 4, 12 + leg);
+  ctx.fillRect(10, -6, 4, 12 - leg);
+  ctx.fillRect(-5, 0, 3, 12);
+  ctx.fillRect(2, 0, 3, 12);
+  ctx.strokeStyle = "#1b2030";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-5, -20); ctx.lineTo(-16, -8);
+  ctx.moveTo(5, -20); ctx.lineTo(16, -8);
+  ctx.stroke();
+  ctx.fillStyle = "#ffe08a";
+  ctx.fillRect(-4, -20, 2, 2); ctx.fillRect(3, -20, 2, 2);
 }
 function paintDread(ctx, walk) {
   var w = walk * 6;
