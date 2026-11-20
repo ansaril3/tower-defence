@@ -106,10 +106,18 @@ function loadIcons() {
   });
   Campaign.ITEM_ORDER.forEach(function (id) { rememberIcon("item:" + id, "assets/icons/items/" + id + ".png"); });
   Object.keys(Campaign.ENEMIES).forEach(function (id) { rememberIcon(id, "assets/icons/units/" + id + ".png"); });
+  rememberIcon("scarab", "assets/icons/skills/CarrionSwarm.png");
+  rememberIcon("anub", "assets/icons/skills/CarrionSwarm3.png");
+  rememberIcon("wail", "assets/icons/heroes/qop.png");
   rememberIcon("familiar", "assets/icons/units/familiar.png");
-  ["guard", "uther", "muradin", "alleria", "falstad", "jaina", "arthas"].forEach(function (id) {
+  ["guard", "uther", "muradin", "falstad", "jaina", "arthas"].forEach(function (id) {
     rememberIcon("story:" + id, "assets/icons/story/" + id + ".png");
   });
+  rememberIcon("story:alleria", "assets/icons/story/alleria.jpg");
+  rememberIcon("story:malganis", "assets/icons/units/malganis.png");
+  rememberIcon("story:terenas", "assets/icons/story/terenas.png");
+  rememberIcon("story:you", "assets/icons/story/you.png");
+  rememberIcon("story:corvtrue", "assets/icons/story/corvtrue.png");
 }
 function iconReady(id) {
   var img = ICONS[id];
@@ -309,13 +317,111 @@ function showMenu() {
   showScreen("menu");
   AudioBus.setMode("menu");
 }
-function showTalk(prefix, beat) {
+var FACES = {
+  you: ["Ты", "assets/icons/story/you.png", "Командир хилсбрадской заставы. В первую ночь закрыл восточную дорогу по королевскому приказу и дошёл с этой бумагой до Ледяного Трона."],
+  corv: ["Корв", "assets/icons/story/guard.png", "Адъютант заставы. В первую ночь прочитал приказ с королевским воском и с тех пор носит печать рядом с командиром."],
+  corvtrue: ["Корв", "assets/icons/story/corvtrue.png", "Адъютант заставы. В первую ночь прочитал приказ с королевским воском и с тех пор носит печать рядом с командиром."],
+  uther: ["Утер", "assets/icons/story/uther.png", "Паладин Света. Пришёл на рассвете после первой ночи и молча шёл следом, пока у дверей зала не заговорил вслух."],
+  muradin: ["Мурадин", "assets/icons/story/muradin.png", "Гном с молотом. Когда-то учил Артаса держать рукоять и с окраины столицы не отстал от отряда."],
+  terenas: ["Теренас", "assets/icons/story/terenas.png", "Король Лордерона. Послал сына на север и просил вернуть его, пока принц ещё оборачивается. Сам остался держать город."],
+  malganis: ["Мал'Ганис", "assets/icons/units/malganis.png", "Натрезим на арке ворот. Звал принца по имени и был приманкой, чтобы Артас сам пришёл к шлему."],
+  alleria: ["Аллерия", "assets/icons/story/alleria.jpg", "Следопыт Луносвета. Встретила отряд у Солнечного колодца, провела до реки Элрендар и в горы не пошла."],
+  falstad: ["Фалстад", "assets/icons/story/falstad.png", "Наездник на грифоне. С высоты видел, как принц едет один и не оглядывается, и не раз садился рядом с отрядом."],
+  jaina: ["Джайна", "assets/icons/story/jaina.png", "Чародейка из Даларана. Догнала отряд у перевала, а в библиотеке сличила два приказа за один день и узнала руку Корва."],
+  arthas: ["Артас", "assets/icons/story/arthas.png", "Принц Лордерона. Уехал на север один. В библиотеке сказал голосу метели «нет», и на троне шлем так и не взял."],
+  butcher: ["Мясник", "assets/icons/units/butcher.png", "Великан с альтеракского перевала. Раньше резал мясо на рынке, пока не поверил обещанию Плети, что голод кончится."],
+  anub: ["Ануб'арак", "assets/icons/skills/CarrionSwarm3.png", "Король Азжол-Неруба. Проваливается под тропу и вылезает дальше, а пока живы его жуки, панцирь почти не берётся."],
+  captain: ["Стража", "assets/icons/story/guard.png", "Капитан стражи. Собирает людей, если заставу оттеснили, и напоминает, что дорога ещё ваша."]
+};
+var SCENE = {
+  1: { before: ["you", "corv"], after: ["you", "corv", "uther"] },
+  2: { before: ["you", "corv", "uther"], after: ["you", "corv", "uther"] },
+  3: { before: ["you", "corv", "uther", "muradin", "terenas"], after: ["you", "corv", "uther", "muradin", "terenas"] },
+  4: { before: ["you", "corv", "uther", "muradin", "terenas", "malganis"], after: ["you", "corv", "uther", "muradin", "terenas"] },
+  5: { before: ["you", "corv", "uther", "muradin", "terenas", "malganis"], after: ["you", "corv", "uther", "muradin", "terenas", "malganis"] },
+  6: { before: ["you", "corv", "uther", "muradin", "alleria"], after: ["you", "corv", "uther", "muradin", "alleria"] },
+  7: { before: ["you", "corv", "uther", "muradin", "alleria"], after: ["you", "corv", "uther", "muradin", "alleria", "falstad"] },
+  8: { before: ["you", "corv", "uther", "muradin"], after: ["you", "corv", "uther", "muradin"] },
+  9: { before: ["you", "corv", "uther", "muradin"], after: ["you", "corv", "uther", "muradin", "falstad"] },
+  10: { before: ["you", "corv", "uther", "muradin", "butcher"], after: ["you", "corv", "uther", "muradin", "jaina"] },
+  11: { before: ["you", "corv", "uther", "muradin", "jaina"], after: ["you", "corv", "uther", "muradin", "jaina"] },
+  12: { before: ["you", "corv", "uther", "muradin", "jaina"], after: ["you", "corv", "uther", "muradin", "jaina"] },
+  13: { before: ["you", "corv", "uther", "muradin", "jaina"], after: ["you", "corv", "uther", "muradin", "jaina", "arthas"] },
+  14: { before: ["you", "corv", "uther", "muradin", "jaina", "arthas"], after: ["you", "corv", "uther", "muradin", "jaina", "arthas"] },
+  15: { before: ["you", "corv", "uther", "muradin", "jaina", "arthas"], after: ["you", "corv", "uther", "muradin", "jaina", "arthas", "anub"] },
+  16: { before: ["you", "corv", "uther", "muradin", "jaina", "arthas", "falstad"], after: ["you", "corv", "uther", "muradin", "jaina", "arthas", "falstad"] },
+  17: { before: ["you", "corv", "uther", "muradin", "jaina", "arthas"], after: ["you", "corv", "uther", "muradin", "jaina", "arthas"] },
+  18: { before: ["you", "corv", "uther", "muradin", "jaina", "arthas"], after: ["you", "corv", "uther", "muradin", "jaina", "arthas"] },
+  19: { before: ["you", "corv", "uther", "muradin", "jaina", "arthas"], after: ["you", "corv", "uther", "muradin", "jaina", "arthas"] },
+  20: { before: ["you", "corvtrue", "uther", "muradin", "jaina", "arthas"], after: ["you", "corvtrue", "uther", "muradin", "jaina", "arthas"] }
+};
+function faceTip() {
+  var tip = document.getElementById("face-tale");
+  if (tip) return tip;
+  tip = document.createElement("div");
+  tip.id = "face-tale";
+  tip.className = "face-tale hidden";
+  document.body.appendChild(tip);
+  return tip;
+}
+function hideFaceTale() {
+  var tip = document.getElementById("face-tale");
+  if (tip) tip.classList.add("hidden");
+}
+function showFaceTale(name, text, anchor) {
+  var tip = faceTip();
+  tip.innerHTML = "";
+  var title = document.createElement("b");
+  title.textContent = name;
+  var line = document.createElement("p");
+  line.textContent = text;
+  tip.appendChild(title);
+  tip.appendChild(line);
+  tip.classList.remove("hidden");
+  var r = anchor.getBoundingClientRect();
+  var left = r.left + r.width / 2;
+  tip.style.left = left + "px";
+  tip.style.top = (r.top - 10) + "px";
+  tip.style.transform = "translate(-50%, -100%)";
+  var box = tip.getBoundingClientRect();
+  if (box.top < 8) {
+    tip.style.top = (r.bottom + 10) + "px";
+    tip.style.transform = "translate(-50%, 0)";
+    box = tip.getBoundingClientRect();
+  }
+  if (box.left < 8) tip.style.left = (left + 8 - box.left) + "px";
+  var over = box.right - (window.innerWidth - 8);
+  if (over > 0) tip.style.left = (parseFloat(tip.style.left) - over) + "px";
+}
+function showCast(prefix, ids) {
+  hideFaceTale();
+  var box = document.getElementById(prefix + "-cast");
+  if (!box) return;
+  box.innerHTML = "";
+  (ids || []).forEach(function (id) {
+    var face = FACES[id];
+    if (!face) return;
+    var fig = document.createElement("figure");
+    var img = document.createElement("img");
+    img.src = face[1];
+    img.alt = face[0];
+    var cap = document.createElement("figcaption");
+    cap.textContent = face[0];
+    fig.appendChild(img);
+    fig.appendChild(cap);
+    fig.addEventListener("mouseenter", function () { showFaceTale(face[0], face[2], fig); });
+    fig.addEventListener("mouseleave", hideFaceTale);
+    box.appendChild(fig);
+  });
+}
+function showTalk(prefix, beat, cast) {
   document.getElementById(prefix + "-who").textContent = beat.who;
   document.getElementById(prefix + "-text").textContent = beat.text;
   var tip = document.getElementById(prefix + "-tip");
   var line = beat.tip || "";
   tip.hidden = !line;
   document.getElementById(prefix + "-tip-text").textContent = line;
+  showCast(prefix, cast);
 }
 function openLevel(id) {
   var lv = Campaign.LEVELS[id - 1];
@@ -323,7 +429,7 @@ function openLevel(id) {
   G.storyFig = lv.before.fig;
   document.getElementById("story-kicker").textContent = "Глава " + lv.id + " · " + Campaign.DIFF[SAVE.difficulty].name;
   document.getElementById("story-title").textContent = lv.name;
-  showTalk("story", lv.before);
+  showTalk("story", lv.before, SCENE[lv.id].before);
   showScreen("story");
   AudioBus.sfx("click");
 }
@@ -1406,14 +1512,14 @@ function showResult() {
     fig = "guard";
     beat = {
       who: "Капитан стражи",
-      text: "Мы отступили на шаг, не сбежали. Дорога ещё наша, если вернуться, пока живые не остались на ней одни.",
+      text: "Мы отступили на шаг и не сбежали, так что дорога ещё наша, если вернуться, пока живые не остались на ней одни.",
       tip: (lv.before && lv.before.tip) || ""
     };
   }
   G.resultFig = fig;
   document.getElementById("result-kicker").textContent = win ? "Глава " + lv.id + " удержана" : "Глава " + lv.id;
   document.getElementById("result-title").textContent = win ? lv.name : "Нас оттеснили";
-  showTalk("result", beat);
+  showTalk("result", beat, win ? SCENE[lv.id].after : ["you", "captain"]);
   var rank = win ? Campaign.DIFF[G.diff.id].rank : 0;
   document.getElementById("result-stars").textContent = (win ? "★★★☆☆☆".slice(3 - rank, 6 - rank) + "  " + Campaign.DIFF[G.diff.id].name : "☆☆☆");
   var next = document.getElementById("result-next");

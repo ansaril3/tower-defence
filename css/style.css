@@ -130,11 +130,38 @@ button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 @keyframes bob { 50% { transform: translateY(-7px); } }
 
 .story { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: start; margin-top: 6vh; }
+.story > div { min-width: 0; }
 .story canvas {
   width: 180px; height: 200px; border-radius: 18px;
   background: #10192b; border: 2px solid var(--gold);
 }
 .story p { font-size: 18px; line-height: 1.45; }
+.story-cast {
+  display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-start;
+  gap: 12px; width: 100%; margin: 6px 0 12px; overflow-x: auto;
+}
+.story-cast figure { margin: 0; flex: 0 0 auto; min-width: 64px; text-align: center; }
+.story-cast img {
+  width: 56px; height: 56px; object-fit: cover; display: block;
+  margin: 0 auto 4px; border-radius: 12px;
+  border: 2px solid var(--gold); background: #10192b;
+}
+.story-cast figcaption {
+  font-size: 12px; line-height: 1.2; color: var(--gold); font-weight: 800;
+  white-space: nowrap;
+}
+.story-cast figure { cursor: pointer; }
+.face-tale {
+  position: fixed; z-index: 40; width: 240px; max-width: 70vw;
+  padding: 8px 10px; pointer-events: none;
+  background: #121b2ef5; border: 2px solid var(--gold); border-radius: 12px;
+  box-shadow: 0 8px 24px #0008;
+}
+.face-tale b {
+  display: block; margin-bottom: 4px; color: var(--gold);
+  font-family: Nunito, sans-serif; font-size: 13px;
+}
+.face-tale p { margin: 0; font-size: 14px; line-height: 1.35; }
 .story-tip {
   margin: 4px 0 12px;
   padding: 8px 12px;
